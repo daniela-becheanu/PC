@@ -1,0 +1,80 @@
+Becheanu Daniela Elena - Tema 1 PCom - Router
+
+* router.c:
+	* firstly, the typedef strutcts for the entries in ARP table and route
+		table were created
+
+	* parse_rtable:
+		* opens a file with the name given as parameter (it will be argv[1])
+			and populates the rtable array
+		* every line from the text is read and constitutes an element in the
+			array
+		* every line contains prefix, next_hop, mask and interface (in this
+			order), but as strings, that is why inet_addr functions is used
+			for the fisrt 3 (the interface can be read as int from the
+			beginning)
+		* it returns the number of elements in the route table (equal to the
+			number of lines in the text file)
+
+	* get_best route:
+		* finds the best route to the dest_ip destination, searching through
+			the sorted route table array
+		* it is based on the iterative binary search algorithm, that is why
+			the complexity is O(logn)
+
+	* get_arp_entry:
+		* searches for the IP given as parameter and, if it is found, the
+			correspondent ARP entry is returned; otherwise, it returns NULL
+
+	* compare:
+		* used for sorting the route table array in ascending order, first
+			compaaring the perfixes of two entries, the masks
+
+	* main:
+		* firstly, the route table and ARP table are declared and it is
+			allocated memory for them; the route table file is parsed using
+			parse_rtable function (the file name is argv[1]), the the route
+			table is sorted using qsort, that takes as parameter the compare
+			function implemented; also, a queue is created
+		* in an infinite loop:
+			* a packet is received
+			* the ether, ip, icmp and arp headers are extracted from the
+				payload of the packet (for ICMP and ARP parse_icmp and
+				parse_arp functions were used)
+			* then, the program is divided in two big cases:
+				* if it is received an IP packet:
+					* if it is destined for the router, it is checked if it is
+						an ICMP ECHO REQUEST, and, if so, and ICMP ECHO REPLY
+						is sent
+					* the checksum is checked and the packet is dropped if it
+						is incorrect
+					* the ttl is checked, and, if it is incorrect, an ICMP TIME
+						EXCEEDED packet is sent
+					* getting the best route
+						* if it is not found, then send an ICMP DEST UNREACH
+							packet and drop the recevedc packet
+						* otherwise, check if the ARP table contains the
+							corresponding MAC address of the best route
+							* if there is not the corresponding MAC addres,
+								create a copy of the received packet and insert
+								it in the queue, then send and ARP REQUEST as
+								broadcast
+							* if the MAC address is found, the packet is
+								forwarded with the fields ttl and check updated
+				* if it is an ARP packet:
+					* if it is an ARP REQEST, send an ARP REPLY packet
+					* if it is an ARP REPLY:
+						* check if the ARP table already contained the MAC
+							received; if it wasn't, add it in the table and
+							increment the size of the ARP table (ARP_TABLE_LEN)
+						* dequeue de queue, extract the ether and IP headers,
+							get the MAC address corresponding to the best route
+							and set it as dhost
+						* update the ttl and check fields and forward the
+							packet
+		* free the memory allocated for the ARP table and route table
+			
+
+
+* skel.h:
+	* added signatures of the ip_checksum and icmp_checksum functions
